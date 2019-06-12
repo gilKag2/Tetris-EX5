@@ -7,10 +7,15 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
+
 #define ERROR "Error in system call"
 #define ERROR_SIZE strlen(ERROR)
 #define SIZE 20
 #define SHAPE_SIZE 3
+#define HORIZONTAL 1
+#define BORDER '*'
+#define SHAPE '-'
 
 
 struct position{
@@ -20,6 +25,8 @@ struct position{
 typedef struct Shape {
     // b is the middle of the shape.
     struct position pos[SHAPE_SIZE];
+    bool state;
+    int midIndex;
 } Shape;
 
 Shape shape;
@@ -30,15 +37,18 @@ void error() {
 }
 
 
+bool validateMove(short pos) {
+    return pos < SIZE;
+}
+
 void setBorders() {
     int i;
     for (i = 0; i < SIZE; i++) {
-
-        screen[i][0] = '*';
-        screen[i][SIZE - 1] = '*';
+        screen[i][0] = BORDER;
+        screen[i][SIZE - 1] = BORDER;
     }
     for (i = 0; i < SIZE; i++) {
-        screen[SIZE - 1][i] = '*';
+        screen[SIZE - 1][i] = BORDER;
     }
 }
 
@@ -51,20 +61,23 @@ void resetScreen() {
     }
 }
 
+
 void drawScreen() {
     int i, j;
     for (i = 0; i < SIZE; i++) {
         for (j = 0; j < SIZE; j++) {
-            if (write(STDOUT_FILENO, &(screen[i][j]), sizeof(screen[i,j])) < 0) error();
+            if (write(STDOUT_FILENO, &(screen[i][j]), sizeof(screen[i,j])) < 0)
+                error();
         }
-        if (write(STDOUT_FILENO, "\n", 1) < 0) error();
+        if (write(STDOUT_FILENO, "\n", 1) < 0)
+            error();
     }
 }
 
 void addShapeToScreen() {
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
-        screen[shape.pos[i].row][shape.pos[i].col] = '-';
+        screen[shape.pos[i].row][shape.pos[i].col] = SHAPE;
     }
 }
 
@@ -72,10 +85,90 @@ void addShapeToScreen() {
 void removeShapeFromScreen() {
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
-        screen[shape.pos[i].row][shape.pos[i].col] = ' ';
+        screen[shape.pos[i].row][shape.pos[i].col] = SHAPE;
     }
 }
 
+void rotateShape() {
+    // change to vertical.
+    if (shape.state == HORIZONTAL) {
+
+        // if we cant rotate, dont do anything.
+        if (!validateMove(shape.pos[shape.midIndex].row + (SHAPE_SIZE / 2)))
+            return;
+
+        // first we remove the shape to draw the new one.
+        removeShapeFromScreen();
+
+        int i, mid = shape.midIndex;
+        // sets the starting row such that they will align with the middle one.
+        int row = shape.pos[mid].row - (SHAPE_SIZE / 2);
+        for (i = 0; i < SHAPE_SIZE; i++) {
+            if (i == mid) continue;
+            // move past the middle element.
+            if (row == shape.pos[mid].row) row++;
+
+            shape.pos[i].col = shape.pos[mid].col;
+            shape.pos[i].row = row++;
+        }
+        // add the shape back to the screen.
+        addShapeToScreen();
+     // change to horizontal.
+    } else {
+
+        // when changing to horizontal, we need to check both left and right
+        if (!validateMove(shape.pos[shape.midIndex].col + (SHAPE_SIZE / 2)) ||
+            !validateMove(shape.pos[shape.midIndex].col - (SHAPE_SIZE / 2)))
+            return;
+
+        /*
+         * this part is similar to the case of horizontal, we just switched the col and row,
+         */
+        removeShapeFromScreen();
+        int i, mid = shape.midIndex;
+        int col = shape.pos[mid].col - (SHAPE_SIZE / 2);
+        for (i = 0; i < SHAPE_SIZE; i++) {
+            if (i == mid) continue;
+            if (col == shape.pos[mid].col) col++;
+
+            shape.pos[i].row = shape.pos[mid].row;
+            shape.pos[i].col = col++;
+        }
+        addShapeToScreen();
+    }
+}
+void moveBy(int move) {
+    // validate that we can move left or right.
+    if (move < 0) {
+        if (!validateMove(shape.pos[0].col + move))
+            return;
+    } else if (!validateMove(shape.pos[SHAPE_SIZE - 1].col + move))
+        return;
+
+    removeShapeFromScreen();
+
+    int i;
+    for (i = 0; i < SHAPE_SIZE; i++) {
+        shape.pos[i].col += move;
+    }
+    addShapeToScreen();
+}
+
+
+void moveDown() {
+
+    //validate that we can move down
+    if (!validateMove(shape.pos[SHAPE_SIZE - 1].row))
+        return;
+
+    removeShapeFromScreen();
+
+    int i;
+    for (i = 0; i < SHAPE_SIZE; i++) {
+        shape.pos[i].row += 1;
+    }
+    addShapeToScreen();
+}
 
 void initShape() {
     int i;
@@ -87,6 +180,8 @@ void initShape() {
     for (i = 0; i < SIZE; i++) {
         shape.pos[i].col = col++;
     }
+    shape.state = HORIZONTAL;
+    shape.midIndex = SHAPE_SIZE / 2;
     addShapeToScreen();
 }
 
