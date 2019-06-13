@@ -48,19 +48,19 @@ void error() {
     write(STDERR_FILENO, ERROR, ERROR_SIZE);
 }
 
-
+// stops the game and exits.
 void exitGame() {
     shouldRun = false;
-    if (close(STDIN_FILENO) < 0)
-        error();
     exit(EXIT_SUCCESS);
 }
 
+// validate that we can move to this pos.
 bool validateMove(short pos) {
 
     return (pos < (SIZE - 1)) && (pos > 0);
 }
 
+// sets the borders of the screen with '*'.
 void setBorders() {
     int i;
     for (i = 0; i < SIZE; i++) {
@@ -72,6 +72,7 @@ void setBorders() {
     }
 }
 
+// clears the screen.
 void resetScreen() {
     int i,j;
     for (i = 0; i < SIZE; i++) {
@@ -81,11 +82,12 @@ void resetScreen() {
     }
 }
 
+// draws the screen.
 void drawScreen() {
     int i, j;
     for (i = 0; i < SIZE; i++) {
         for (j = 0; j < SIZE; j++) {
-            if (write(STDOUT_FILENO, &(screen[i][j]), sizeof(screen[i][j])) < 0)
+            if (write(STDOUT_FILENO, &screen[i][j], 1) < 0)
                 error();
         }
         if (write(STDOUT_FILENO, "\n", 1) < 0)
@@ -93,6 +95,8 @@ void drawScreen() {
     }
 }
 
+
+// adds the shape to the screen.
 void addShapeToScreen() {
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
@@ -100,7 +104,7 @@ void addShapeToScreen() {
     }
 }
 
-
+// removes the shape from the screen.
 void removeShapeFromScreen() {
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
@@ -108,6 +112,7 @@ void removeShapeFromScreen() {
     }
 }
 
+// rotates the shape, if valid.
 void rotateShape() {
     // change to vertical.
     if (shape.state == HORIZONTAL) {
@@ -158,6 +163,7 @@ void rotateShape() {
         addShapeToScreen();
     }
 }
+// move the shape by "move" steps, if valid.
 void moveBy(int move) {
     // validate that we can move left or right.
     if (move < 0) {
@@ -167,7 +173,6 @@ void moveBy(int move) {
         return;
 
     removeShapeFromScreen();
-
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
         shape.pos[i].col += move;
@@ -175,7 +180,7 @@ void moveBy(int move) {
     addShapeToScreen();
 }
 
-
+// inits the shape as horizontal in the top middle of the screen.
 void initShape() {
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
@@ -192,6 +197,7 @@ void initShape() {
     addShapeToScreen();
 }
 
+// moves the shape down by 1
 void moveDown() {
 
     //if we  cant move down, then we reached the bottom of the screen.
@@ -202,7 +208,6 @@ void moveDown() {
     }
 
     removeShapeFromScreen();
-
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
         shape.pos[i].row += 1;
@@ -210,6 +215,7 @@ void moveDown() {
     addShapeToScreen();
 }
 
+// handles the signal from the user - SIGUSR2. reects to the key accordingly.
 void userSignalHandler(int sigNum, siginfo_t* siginfo, void* ptr) {
     char key[1];
     if (read(STDIN_FILENO, key, 1) < 0)
@@ -237,7 +243,7 @@ void userSignalHandler(int sigNum, siginfo_t* siginfo, void* ptr) {
     }
 }
 
-
+// handles the alarm - moves the shape down by 1 every second.
 void alarmSignalHandler(int sigNum, siginfo_t* siginfo, void* ptr){
     system("clear");
     moveDown();
@@ -262,6 +268,7 @@ int main() {
     drawScreen();
     initShape();
     alarm(ALARM_TIME);
+    // run until interrupted.
     while (shouldRun)
         pause();
 

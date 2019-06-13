@@ -20,8 +20,9 @@ int writeToPipeFileDes = -1;
 void error() {
     write(STDERR_FILENO, ERROR, ERROR_SIZE);
 }
-void chldSignalHandler(int sigNum, siginfo_t * info, void* ptr) {
-    if (writeToPipeFileDes != -1){
+
+void chldSignalHandler(int sigNum, siginfo_t *info, void *ptr) {
+    if (writeToPipeFileDes != -1) {
         // closes the pipe write file descriptor.
         if (close(writeToPipeFileDes) < 0)
             error();
@@ -41,11 +42,11 @@ char getch() {
     if (tcsetattr(0, TCSANOW, &old) < 0)
         perror("tcsetattr ICANON");
     if (read(0, &buf, 1) < 0)
-        perror ("read()");
+        perror("read()");
     old.c_lflag |= ICANON;
     old.c_lflag |= ECHO;
     if (tcsetattr(0, TCSADRAIN, &old) < 0)
-        perror ("tcsetattr ~ICANON");
+        perror("tcsetattr ~ICANON");
 
     return (buf);
 }
@@ -55,6 +56,7 @@ void execute() {
     int pipedes[2];
     if (pipe(pipedes) < 0)
         error();
+    // saved the write fd to close it later in the signal handler
     writeToPipeFileDes = pipedes[1];
     struct sigaction chldAction;
     chldAction.sa_sigaction = chldSignalHandler;
@@ -62,28 +64,32 @@ void execute() {
     if (sigaction(SIGCHLD, &chldAction, NULL) < 0)
         error();
     pid_t pid;
-    switch ((pid=fork())) {
+    switch ((pid = fork())) {
+            // error case
         case -1:
             error();
             exit(EXIT_FAILURE);
-            // chld case - read from the pipe.
+            // child case - read from the pipe.
         case 0:
             if (close(pipedes[1]) < 0)
                 error();
+            // redirect the pipe to stdin.
             if (dup2(pipedes[0], STDIN_FILENO) < 0)
                 error();
-            char * args[] = {FILE_TO_RUN, NULL};
+            char *args[] = {FILE_TO_RUN, NULL};
+            // run the game.
             execv("draw.out", args);
             error();
             exit(EXIT_FAILURE);
 
-         // parent case - write to pipe.
+            // parent case - write to pipe.
         default:
             if (close(pipedes[0]) < 0)
                 error();
             char key[1] = {' '};
             while (*key != EXIT) {
                 *key = getch();
+                // sends the key through the pipe.
                 if (write(pipedes[1], key, 1) < 0)
                     error();
                 if (kill(pid, SIGUSR2) < 0)
