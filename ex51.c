@@ -15,16 +15,17 @@
 #define FILE_TO_RUN "./draw.out"
 #define EXIT 'q'
 
-int writeToPipeFileDes;
+int writeToPipeFileDes = -1;
 
 void error() {
     write(STDERR_FILENO, ERROR, ERROR_SIZE);
 }
-void chldSignalHandler(int sigNum, siginfo_t * info, void* ptr){
-    // closes the pipe write file descriptor.
-    if (close(writeToPipeFileDes) < 0)
-        error();
-
+void chldSignalHandler(int sigNum, siginfo_t * info, void* ptr) {
+    if (writeToPipeFileDes != -1){
+        // closes the pipe write file descriptor.
+        if (close(writeToPipeFileDes) < 0)
+            error();
+    }
     exit(EXIT_SUCCESS);
 }
 
@@ -45,6 +46,7 @@ char getch() {
     old.c_lflag |= ECHO;
     if (tcsetattr(0, TCSADRAIN, &old) < 0)
         perror ("tcsetattr ~ICANON");
+
     return (buf);
 }
 
@@ -76,7 +78,7 @@ void execute() {
             exit(EXIT_FAILURE);
 
          // parent case - write to pipe.
-        case 1:
+        default:
             if (close(pipedes[0]) < 0)
                 error();
             char key[1] = {' '};
@@ -97,5 +99,5 @@ void execute() {
 
 int main() {
     execute();
-
+    return 0;
 }

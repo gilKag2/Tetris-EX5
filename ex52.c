@@ -15,6 +15,7 @@
 #define ERROR_SIZE strlen(ERROR)
 #define SIZE 20
 #define SHAPE_SIZE 3
+#define VERTICAL 0
 #define HORIZONTAL 1
 #define BORDER '*'
 #define SHAPE '-'
@@ -56,7 +57,8 @@ void exitGame() {
 }
 
 bool validateMove(short pos) {
-    return pos < SIZE;
+
+    return (pos < (SIZE - 1)) && (pos > 0);
 }
 
 void setBorders() {
@@ -102,7 +104,7 @@ void addShapeToScreen() {
 void removeShapeFromScreen() {
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
-        screen[shape.pos[i].row][shape.pos[i].col] = SHAPE;
+        screen[shape.pos[i].row][shape.pos[i].col] = ' ';
     }
 }
 
@@ -129,6 +131,7 @@ void rotateShape() {
             shape.pos[i].row = row++;
         }
         // add the shape back to the screen.
+        shape.state = VERTICAL;
         addShapeToScreen();
      // change to horizontal.
     } else {
@@ -151,6 +154,7 @@ void rotateShape() {
             shape.pos[i].row = shape.pos[mid].row;
             shape.pos[i].col = col++;
         }
+        shape.state = HORIZONTAL;
         addShapeToScreen();
     }
 }
@@ -178,7 +182,8 @@ void initShape() {
         shape.pos[i].row = 0;
     }
     // sets the starting col position such that the middle if the shape will be in the middle of the screen.
-    int col = (SIZE / 2) - SHAPE_SIZE + (SHAPE_SIZE / 2);
+    // in this case its : 10 - 1 = 9
+    int col = (SIZE / 2) - (SHAPE_SIZE / 2);
     for (i = 0; i < SIZE; i++) {
         shape.pos[i].col = col++;
     }
@@ -190,7 +195,7 @@ void initShape() {
 void moveDown() {
 
     //if we  cant move down, then we reached the bottom of the screen.
-    if (!validateMove(shape.pos[SHAPE_SIZE - 1].row)){
+    if (!validateMove(shape.pos[SHAPE_SIZE - 1].row + 1)){
         removeShapeFromScreen();
         initShape();
         return;
@@ -230,7 +235,6 @@ void userSignalHandler(int sigNum, siginfo_t* siginfo, void* ptr) {
         default:
             break;
     }
-    drawScreen();
 }
 
 
@@ -253,7 +257,7 @@ int main() {
         error();
     if (sigaction(SIGALRM, &alarmAct, NULL) < 0)
         error();
-
+    resetScreen();
     setBorders();
     drawScreen();
     initShape();
