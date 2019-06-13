@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <signal.h>
 
 #define ERROR "Error in system call"
 #define ERROR_SIZE strlen(ERROR)
@@ -16,6 +18,13 @@
 #define HORIZONTAL 1
 #define BORDER '*'
 #define SHAPE '-'
+#define ALARM_TIME 1
+#define LEFT 'a'
+#define DOWN 's'
+#define ROTATE 'w'
+#define RIGHT 'd'
+#define EXIT 'q'
+
 
 
 struct position{
@@ -32,10 +41,19 @@ typedef struct Shape {
 Shape shape;
 char screen[SIZE][SIZE];
 
+bool shouldRun;
+
 void error() {
     write(STDERR_FILENO, ERROR, ERROR_SIZE);
 }
 
+
+void exitGame() {
+    shouldRun = false;
+    if (close(STDIN_FILENO) < 0)
+        error();
+    exit(EXIT_SUCCESS);
+}
 
 bool validateMove(short pos) {
     return pos < SIZE;
@@ -61,12 +79,11 @@ void resetScreen() {
     }
 }
 
-
 void drawScreen() {
     int i, j;
     for (i = 0; i < SIZE; i++) {
         for (j = 0; j < SIZE; j++) {
-            if (write(STDOUT_FILENO, &(screen[i][j]), sizeof(screen[i,j])) < 0)
+            if (write(STDOUT_FILENO, &(screen[i][j]), sizeof(screen[i][j])) < 0)
                 error();
         }
         if (write(STDOUT_FILENO, "\n", 1) < 0)
@@ -155,21 +172,6 @@ void moveBy(int move) {
 }
 
 
-void moveDown() {
-
-    //validate that we can move down
-    if (!validateMove(shape.pos[SHAPE_SIZE - 1].row))
-        return;
-
-    removeShapeFromScreen();
-
-    int i;
-    for (i = 0; i < SHAPE_SIZE; i++) {
-        shape.pos[i].row += 1;
-    }
-    addShapeToScreen();
-}
-
 void initShape() {
     int i;
     for (i = 0; i < SHAPE_SIZE; i++) {
@@ -185,7 +187,78 @@ void initShape() {
     addShapeToScreen();
 }
 
+void moveDown() {
+
+    //if we  cant move down, then we reached the bottom of the screen.
+    if (!validateMove(shape.pos[SHAPE_SIZE - 1].row)){
+        removeShapeFromScreen();
+        initShape();
+        return;
+    }
+
+    removeShapeFromScreen();
+
+    int i;
+    for (i = 0; i < SHAPE_SIZE; i++) {
+        shape.pos[i].row += 1;
+    }
+    addShapeToScreen();
+}
+
+void userSignalHandler(int sigNum, siginfo_t* siginfo, void* ptr) {
+    char key[1];
+    if (read(STDIN_FILENO, key, 1) < 0)
+        error();
+
+    switch (*key) {
+        case EXIT:
+            resetScreen();
+            exitGame();
+            break;
+        case RIGHT:
+            moveBy(1);
+            break;
+        case LEFT:
+            moveBy(-1);
+            break;
+        case DOWN:
+            moveDown();
+            break;
+        case ROTATE:
+            rotateShape();
+            break;
+        default:
+            break;
+    }
+    drawScreen();
+}
+
+
+void alarmSignalHandler(int sigNum, siginfo_t* siginfo, void* ptr){
+    system("clear");
+    moveDown();
+    drawScreen();
+    alarm(ALARM_TIME);
+}
+
+
 int main() {
-    printf("Hello, World!\n");
+    system("clear");
+    shouldRun = true;
+    struct sigaction userAct, alarmAct;
+    userAct.sa_sigaction = userSignalHandler;
+    alarmAct.sa_sigaction = alarmSignalHandler;
+    if (sigaction(SIGUSR2, &userAct, NULL) < 0)
+        error();
+    if (sigaction(SIGALRM, &alarmAct, NULL) < 0)
+        error();
+
+    setBorders();
+    drawScreen();
+    initShape();
+    alarm(ALARM_TIME);
+    while (shouldRun)
+        pause();
+
     return 0;
 }
