@@ -248,6 +248,7 @@ int main() {
     struct sigaction userAct, alarmAct;
     userAct.sa_sigaction = userSignalHandler;
     alarmAct.sa_sigaction = alarmSignalHandler;
+    userAct.sa_flags = alarmAct.sa_flags = SA_SIGINFO;
     if (sigaction(SIGUSR2, &userAct, NULL) < 0)
         error();
     if (sigaction(SIGALRM, &alarmAct, NULL) < 0)
