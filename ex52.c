@@ -4,7 +4,7 @@
  */
 
 
-#include <stdio.h>
+
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
@@ -46,6 +46,7 @@ bool shouldRun;
 
 void error() {
     write(STDERR_FILENO, ERROR, ERROR_SIZE);
+    exit(EXIT_FAILURE);
 }
 
 // stops the game and exits.
@@ -189,7 +190,7 @@ void initShape() {
     // sets the starting col position such that the middle if the shape will be in the middle of the screen.
     // in this case its : 10 - 1 = 9
     int col = (SIZE / 2) - (SHAPE_SIZE / 2);
-    for (i = 0; i < SIZE; i++) {
+    for (i = 0; i < SHAPE_SIZE; i++) {
         shape.pos[i].col = col++;
     }
     shape.state = HORIZONTAL;
@@ -259,14 +260,13 @@ int main() {
     userAct.sa_sigaction = userSignalHandler;
     alarmAct.sa_sigaction = alarmSignalHandler;
     userAct.sa_flags = alarmAct.sa_flags = SA_SIGINFO;
-    if (sigaction(SIGUSR2, &userAct, NULL) < 0)
+    if (sigaction(SIGUSR2, &userAct, NULL) < 0 || (sigaction(SIGALRM, &alarmAct, NULL)))
         error();
-    if (sigaction(SIGALRM, &alarmAct, NULL) < 0)
-        error();
+
     resetScreen();
     setBorders();
-    drawScreen();
     initShape();
+    drawScreen();
     alarm(ALARM_TIME);
     // run until interrupted.
     while (shouldRun)

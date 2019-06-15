@@ -19,6 +19,7 @@ int writeToPipeFileDes = -1;
 
 void error() {
     write(STDERR_FILENO, ERROR, ERROR_SIZE);
+    exit(EXIT_FAILURE);
 }
 
 void chldSignalHandler(int sigNum, siginfo_t *info, void *ptr) {
